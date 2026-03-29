@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node /Users/vanderleibatista/.claude/plugins/cache/claude-plugins-official/vercel/2e79fc9698b0/hooks/user-prompt-submit-skill-inject.mjs 2)",
+      "Bash(1:*)",
+      "Bash(node /Users/vanderleibatista/.claude/plugins/cache/claude-plugins-official/vercel/2e79fc9698b0/hooks/user-prompt-submit-telemetry.mjs 2)",
+      "Bash(node /Users/vanderleibatista/.claude/plugins/cache/claude-plugins-official/hookify/unknown/hooks/userpromptsubmit.py 2)",
+      "Bash(ls -la /Users/vanderleibatista/.claude/plugins/cache/claude-plugins-official/vercel/2e79fc9698b0/hooks/*.mjs)",
+      "Bash(for hooks_file in /Users/vanderleibatista/.claude/plugins/cache/claude-plugins-official/*/*/hooks/hooks.json)",
+      "Bash(do echo:*)",
+      "Read(//Users/vanderleibatista/projects/sige-iml/**)",
+      "Bash(done)",
+      "Bash(for hooks_file in /Users/vanderleibatista/.claude/plugins/marketplaces/claude-plugins-official/plugins/*/hooks/hooks.json)",
+      "Bash(cp /Users/vanderleibatista/projects/sige-iml/CLAUDE.md /tmp/CLAUDE.md.bak)",
+      "Bash(npx create-next-app@latest /Users/vanderleibatista/projects/sige-iml --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --yes)",
+      "Bash(cp /tmp/CLAUDE.md.bak /Users/vanderleibatista/projects/sige-iml/CLAUDE.md)",
+      "Bash(mv CLAUDE.md /tmp/CLAUDE_sige.md)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --yes)",
+      "Bash(mv /tmp/CLAUDE_sige.md CLAUDE.md)",
+      "Bash(npx:*)",
+      "Bash(ls:*)"
+    ]
+  }
+}
