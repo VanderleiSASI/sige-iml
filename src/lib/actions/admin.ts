@@ -52,99 +52,41 @@ export async function criarUsuario(
     return { erro: 'Apenas administradores podem criar usuários.' }
   }
 
-  // Verificar variáveis de ambiente
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  
-  console.log('ENV CHECK - URL definida:', !!supabaseUrl)
-  console.log('ENV CHECK - Service Role definida:', !!serviceRoleKey)
-  console.log('ENV CHECK - Service Role length:', serviceRoleKey?.length || 0)
-  
-  if (!serviceRoleKey || !supabaseUrl) {
-    console.error('Variáveis de ambiente ausentes:', { url: !!supabaseUrl, key: !!serviceRoleKey })
-    return { erro: 'Configuração de servidor incompleta. Contate o administrador.' }
-  }
-
-  // Criar usuário via API REST diretamente
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    
-    console.log('Criando usuário via API:', { 
-      email: dados.email, 
-      url: supabaseUrl 
-    })
-    
-    // ETAPA 1: Criar usuário no auth.users SEM trigger
-    const response = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': serviceRoleKey!,
-        'Authorization': `Bearer ${serviceRoleKey}`,
-        'x-application-name': 'sige-iml',
-      },
-      body: JSON.stringify({
-        email: dados.email,
-        password: dados.password,
-        email_confirm: true,
-        // Não enviar user_metadata ainda - pode estar causando o erro no trigger
-      }),
+    const serviceClient = createServiceClient()
+
+    // Criar usuário via SDK admin (nome e perfil já no user_metadata para o trigger)
+    const { data, error: authError } = await serviceClient.auth.admin.createUser({
+      email: dados.email,
+      password: dados.password,
+      email_confirm: true,
+      user_metadata: { nome: dados.nome, perfil: dados.perfil },
     })
 
-    const responseData = await response.json()
-    console.log('Resposta da API:', JSON.stringify(responseData, null, 2))
-
-    if (!response.ok) {
-      const errorMsg = responseData.message || responseData.error || 'Erro ao criar usuário'
-      console.error('Erro da API:', errorMsg)
-      
-      if (errorMsg.includes('already registered') || errorMsg.includes('already exists')) {
+    if (authError) {
+      if (authError.message.includes('already registered') || authError.message.includes('already exists')) {
         return { erro: 'Já existe um usuário com este e-mail.' }
       }
-      
-      return { erro: errorMsg }
+      return { erro: authError.message }
     }
 
-    const userId = responseData.id
-    console.log('Usuário criado no auth:', userId)
-
-    // ETAPA 2: Inserir manualmente na tabela usuários
-    const serviceClient = createServiceClient()
-    const { error: insertError } = await serviceClient
+    // Garantir que public.usuarios está sincronizado (o trigger pode já ter inserido)
+    const { error: upsertError } = await serviceClient
       .from('usuarios')
-      .insert({
-        id: userId,
+      .upsert({
+        id: data.user.id,
         email: dados.email,
         nome: dados.nome,
         perfil: dados.perfil,
         ativo: true,
-      })
+      }, { onConflict: 'id' })
 
-    if (insertError) {
-      console.error('Erro ao inserir na tabela usuarios:', insertError)
-      // Não retorna erro - o usuário foi criado no auth, só falhou a sincronização
+    if (upsertError) {
+      console.error('Erro ao sincronizar public.usuarios:', upsertError)
     }
 
-    // ETAPA 3: Atualizar user_metadata
-    await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': serviceRoleKey!,
-        'Authorization': `Bearer ${serviceRoleKey}`,
-      },
-      body: JSON.stringify({
-        user_metadata: {
-          nome: dados.nome,
-          perfil: dados.perfil,
-        },
-      }),
-    })
-
-    console.log('Usuário criado com sucesso:', userId)
     revalidatePath('/admin/usuarios')
-    return { sucesso: true, id: userId }
+    return { sucesso: true, id: data.user.id }
   } catch (error) {
     console.error('Exceção ao criar usuário:', error)
     return { erro: error instanceof Error ? error.message : 'Erro desconhecido' }
@@ -190,13 +132,13 @@ export async function redefinirSenhaUsuario(
   id: string,
   novaSenha: string
 ): Promise<{ sucesso: true } | { erro: string }> {
-  const supabase = await createClient()
-  
+  const authClient = await createClient()
+
   // Verificar se é admin
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user } } = await authClient.auth.getUser()
   if (!user) return { erro: 'Não autenticado.' }
 
-  const { data: usuario } = await supabase
+  const { data: usuario } = await authClient
     .from('usuarios')
     .select('perfil')
     .eq('id', user.id)
@@ -206,7 +148,9 @@ export async function redefinirSenhaUsuario(
     return { erro: 'Apenas administradores podem redefinir senhas.' }
   }
 
-  const { error } = await supabase.auth.admin.updateUserById(id, {
+  // Usar service client — auth.admin requer service_role key
+  const serviceClient = createServiceClient()
+  const { error } = await serviceClient.auth.admin.updateUserById(id, {
     password: novaSenha,
   })
 
