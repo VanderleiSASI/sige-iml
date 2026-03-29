@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import type { Database } from '@/lib/types/database.types'
 
@@ -29,24 +30,15 @@ export async function createClient() {
 
 /** Cliente com service role — apenas para Server Actions que precisam
  *  de acesso privilegiado (ex: criar usuários via Admin API) */
-export async function createServiceClient() {
-  const cookieStore = await cookies()
-
-  return createServerClient<Database>(
+export function createServiceClient() {
+  // Usar cliente Supabase puro SEM SSR/cookies para garantir service_role
+  return createSupabaseClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          } catch {}
-        },
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
       },
     }
   )

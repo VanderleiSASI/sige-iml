@@ -67,7 +67,7 @@ export async function criarUsuario(
 
   // Criar usuário no auth usando service client (necessita service_role)
   try {
-    const serviceClient = await createServiceClient()
+    const serviceClient = createServiceClient()
     const { data: authData, error: authError } = await serviceClient.auth.admin.createUser({
       email: dados.email,
       password: dados.password,
