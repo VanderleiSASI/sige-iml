@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { Database } from '@/lib/types/database.types'
 
 export type Usuario = Database['public']['Tables']['usuarios']['Row']
@@ -37,13 +37,12 @@ export async function criarUsuario(
     perfil: Database['public']['Enums']['perfil_usuario']
   }
 ): Promise<{ sucesso: true; id: string } | { erro: string }> {
-  const supabase = await createClient()
-  
-  // Verificar se é admin
-  const { data: { user } } = await supabase.auth.getUser()
+  // Verificar se é admin usando client normal
+  const authClient = await createClient()
+  const { data: { user } } = await authClient.auth.getUser()
   if (!user) return { erro: 'Não autenticado.' }
 
-  const { data: usuario } = await supabase
+  const { data: usuario } = await authClient
     .from('usuarios')
     .select('perfil')
     .eq('id', user.id)
@@ -53,8 +52,9 @@ export async function criarUsuario(
     return { erro: 'Apenas administradores podem criar usuários.' }
   }
 
-  // Criar usuário no auth
-  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+  // Criar usuário no auth usando service client (necessita service_role)
+  const serviceClient = await createServiceClient()
+  const { data: authData, error: authError } = await serviceClient.auth.admin.createUser({
     email: dados.email,
     password: dados.password,
     email_confirm: true,
