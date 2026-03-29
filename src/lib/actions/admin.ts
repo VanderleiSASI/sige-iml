@@ -65,48 +65,51 @@ export async function criarUsuario(
     return { erro: 'Configuração de servidor incompleta. Contate o administrador.' }
   }
 
-  // Criar usuário no auth usando service client (necessita service_role)
+  // Criar usuário via API REST diretamente
   try {
-    const serviceClient = createServiceClient()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     
-    console.log('Criando usuário com dados:', { 
+    console.log('Criando usuário via API:', { 
       email: dados.email, 
-      nome: dados.nome, 
-      perfil: dados.perfil 
+      url: supabaseUrl 
     })
     
-    const { data: authData, error: authError } = await serviceClient.auth.admin.createUser({
-      email: dados.email,
-      password: dados.password,
-      email_confirm: true,
-      user_metadata: {
-        nome: dados.nome,
-        perfil: dados.perfil,
+    const response = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': serviceRoleKey!,
+        'Authorization': `Bearer ${serviceRoleKey}`,
       },
+      body: JSON.stringify({
+        email: dados.email,
+        password: dados.password,
+        email_confirm: true,
+        user_metadata: {
+          nome: dados.nome,
+          perfil: dados.perfil,
+        },
+      }),
     })
 
-    if (authError) {
-      console.error('Erro detalhado ao criar usuário:', JSON.stringify(authError, null, 2))
+    const responseData = await response.json()
+    console.log('Resposta da API:', JSON.stringify(responseData, null, 2))
+
+    if (!response.ok) {
+      const errorMsg = responseData.message || responseData.error || 'Erro ao criar usuário'
+      console.error('Erro da API:', errorMsg)
       
-      // Erros específicos
-      if (authError.message?.includes('already registered') || authError.message?.includes('already exists')) {
+      if (errorMsg.includes('already registered') || errorMsg.includes('already exists')) {
         return { erro: 'Já existe um usuário com este e-mail.' }
       }
-      if (authError.message?.includes('database error')) {
-        return { erro: 'Erro no banco de dados ao criar usuário. Verifique se o email já existe ou se há problema com o perfil selecionado.' }
-      }
       
-      return { erro: authError.message || 'Erro ao criar usuário' }
+      return { erro: errorMsg }
     }
 
-    if (!authData?.user) {
-      console.error('Nenhum usuário retornado após criação')
-      return { erro: 'Erro ao criar usuário - resposta vazia' }
-    }
-
-    console.log('Usuário criado com sucesso:', authData.user.id)
+    console.log('Usuário criado:', responseData.id)
     revalidatePath('/admin/usuarios')
-    return { sucesso: true, id: authData.user.id }
+    return { sucesso: true, id: responseData.id }
   } catch (error) {
     console.error('Exceção ao criar usuário:', error)
     return { erro: error instanceof Error ? error.message : 'Erro desconhecido' }
