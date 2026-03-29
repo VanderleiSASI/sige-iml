@@ -480,6 +480,15 @@ export interface Database {
         Args: Record<never, never>
         Returns: string
       }
+      registrar_auditoria: {
+        Args: {
+          p_encaminhamento_id: string
+          p_acao: AcaoAuditoria
+          p_dados_anteriores?: Json
+          p_dados_novos?: Json
+        }
+        Returns: void
+      }
     }
     Enums: {
       perfil_usuario: PerfilUsuario

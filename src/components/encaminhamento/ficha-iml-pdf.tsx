@@ -229,11 +229,11 @@ export function FichaIMLPDF({ encaminhamento }: Props) {
                   ))}
                 </div>
                 <div className="flex flex-wrap gap-2 mt-1">
-                  <Checkbox checked={encaminhamento.envenenamento_substancias?.includes('Álcool')} label="Álcool" />
-                  <Checkbox checked={encaminhamento.envenenamento_substancias?.includes('Maconha')} label="Maconha" />
-                  <Checkbox checked={encaminhamento.envenenamento_substancias?.includes('Cocaína')} label="Cocaína" />
-                  <Checkbox checked={encaminhamento.envenenamento_substancias?.includes('Oxi/Crack')} label="Oxi/Crack" />
-                  <Checkbox checked={encaminhamento.envenenamento_substancias?.includes('Medicamento(s)') || false} label="Medicamento(s):" />
+                  <Checkbox checked={Boolean(encaminhamento.envenenamento_substancias?.includes('Álcool'))} label="Álcool" />
+                  <Checkbox checked={Boolean(encaminhamento.envenenamento_substancias?.includes('Maconha'))} label="Maconha" />
+                  <Checkbox checked={Boolean(encaminhamento.envenenamento_substancias?.includes('Cocaína'))} label="Cocaína" />
+                  <Checkbox checked={Boolean(encaminhamento.envenenamento_substancias?.includes('Oxi/Crack'))} label="Oxi/Crack" />
+                  <Checkbox checked={Boolean(encaminhamento.envenenamento_substancias?.includes('Medicamento(s)'))} label="Medicamento(s):" />
                   {encaminhamento.envenenamento_substancias?.some(s => !['Álcool', 'Maconha', 'Cocaína', 'Oxi/Crack', 'Medicamento(s)'].includes(s)) && (
                     <span className="border-b border-black flex-1 text-[8px]">
                       {encaminhamento.envenenamento_substancias?.find(s => !['Álcool', 'Maconha', 'Cocaína', 'Oxi/Crack', 'Medicamento(s)'].includes(s))}
