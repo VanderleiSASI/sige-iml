@@ -52,10 +52,17 @@ export async function criarUsuario(
     return { erro: 'Apenas administradores podem criar usuários.' }
   }
 
-  // Verificar se service role key está configurada
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    console.error('SUPABASE_SERVICE_ROLE_KEY não definida')
-    return { erro: 'Configuração de servidor incompleta.' }
+  // Verificar variáveis de ambiente
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  
+  console.log('ENV CHECK - URL definida:', !!supabaseUrl)
+  console.log('ENV CHECK - Service Role definida:', !!serviceRoleKey)
+  console.log('ENV CHECK - Service Role length:', serviceRoleKey?.length || 0)
+  
+  if (!serviceRoleKey || !supabaseUrl) {
+    console.error('Variáveis de ambiente ausentes:', { url: !!supabaseUrl, key: !!serviceRoleKey })
+    return { erro: 'Configuração de servidor incompleta. Contate o administrador.' }
   }
 
   // Criar usuário no auth usando service client (necessita service_role)
