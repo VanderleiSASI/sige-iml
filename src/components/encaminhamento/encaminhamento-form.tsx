@@ -1,7 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
+import { useEffect } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { encaminhamentoSchema, camposPorEtapa, type EncaminhamentoFormData } from '@/lib/validations/encaminhamento.schema'
@@ -56,6 +57,16 @@ export function EncaminhamentoForm({ encaminhamentoId, defaultValues }: Props) {
     } as any,
     mode: 'onChange',
   })
+
+  // Watch motivo para ajustar causa_principal quando for morte_suspeita
+  const motivo = useWatch({ control: form.control, name: 'motivo' })
+  
+  useEffect(() => {
+    if (motivo === 'morte_suspeita') {
+      // Define causa_principal como envenenamento quando motivo é suspeita
+      form.setValue('causa_principal', 'envenenamento')
+    }
+  }, [motivo, form])
 
   const stepper = useStepper({
     totalSteps: ETAPAS.length,
