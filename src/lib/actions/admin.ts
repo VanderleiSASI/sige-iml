@@ -52,31 +52,43 @@ export async function criarUsuario(
     return { erro: 'Apenas administradores podem criar usuários.' }
   }
 
+  // Verificar se service role key está configurada
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('SUPABASE_SERVICE_ROLE_KEY não definida')
+    return { erro: 'Configuração de servidor incompleta.' }
+  }
+
   // Criar usuário no auth usando service client (necessita service_role)
-  const serviceClient = await createServiceClient()
-  const { data: authData, error: authError } = await serviceClient.auth.admin.createUser({
-    email: dados.email,
-    password: dados.password,
-    email_confirm: true,
-    user_metadata: {
-      nome: dados.nome,
-      perfil: dados.perfil,
-    },
-  })
+  try {
+    const serviceClient = await createServiceClient()
+    const { data: authData, error: authError } = await serviceClient.auth.admin.createUser({
+      email: dados.email,
+      password: dados.password,
+      email_confirm: true,
+      user_metadata: {
+        nome: dados.nome,
+        perfil: dados.perfil,
+      },
+    })
 
-  if (authError) {
-    if (authError.message.includes('already registered')) {
-      return { erro: 'Já existe um usuário com este e-mail.' }
+    if (authError) {
+      console.error('Erro ao criar usuário:', authError)
+      if (authError.message.includes('already registered')) {
+        return { erro: 'Já existe um usuário com este e-mail.' }
+      }
+      return { erro: authError.message }
     }
-    return { erro: authError.message }
-  }
 
-  if (!authData.user) {
-    return { erro: 'Erro ao criar usuário.' }
-  }
+    if (!authData.user) {
+      return { erro: 'Erro ao criar usuário.' }
+    }
 
-  revalidatePath('/admin/usuarios')
-  return { sucesso: true, id: authData.user.id }
+    revalidatePath('/admin/usuarios')
+    return { sucesso: true, id: authData.user.id }
+  } catch (error) {
+    console.error('Exceção ao criar usuário:', error)
+    return { erro: error instanceof Error ? error.message : 'Erro desconhecido' }
+  }
 }
 
 export async function atualizarUsuario(
