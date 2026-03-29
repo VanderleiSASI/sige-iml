@@ -123,7 +123,29 @@ export function EncaminhamentoForm({ encaminhamentoId, defaultValues }: Props) {
                 {form.formState.isSubmitting ? 'Salvando...' : 'Salvar Rascunho'}
               </Button>
             ) : (
-              <Button type="button" onClick={stepper.avancar}>
+              <Button 
+                type="button" 
+                onClick={async () => {
+                  const campos = CAMPOS_POR_ETAPA[stepper.etapaAtual] ?? []
+                  const valido = await form.trigger(campos as never)
+                  if (!valido) {
+                    // Mostra toast com os erros
+                    const erros = form.formState.errors
+                    const mensagens = Object.entries(erros)
+                      .filter(([key]) => campos.includes(key as never))
+                      .map(([, value]) => value?.message)
+                      .filter(Boolean)
+                      .slice(0, 3) // Mostra no máximo 3 erros
+                    
+                    if (mensagens.length > 0) {
+                      toast.error('Preencha os campos obrigatórios:', {
+                        description: mensagens.join('\n'),
+                      })
+                    }
+                  }
+                  stepper.avancar()
+                }}
+              >
                 Próximo
               </Button>
             )}

@@ -23,7 +23,7 @@ export function useStepper<T extends FieldValues>({
 
   const avancar = useCallback(async () => {
     const campos = camposPorEtapa[etapaAtual] ?? []
-    const valido = await form.trigger(campos)
+    const valido = await form.trigger(campos, { shouldFocus: true })
 
     if (valido) {
       setEtapasValidas((prev) => new Set(prev).add(etapaAtual))
