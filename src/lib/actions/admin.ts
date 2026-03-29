@@ -68,6 +68,13 @@ export async function criarUsuario(
   // Criar usuário no auth usando service client (necessita service_role)
   try {
     const serviceClient = createServiceClient()
+    
+    console.log('Criando usuário com dados:', { 
+      email: dados.email, 
+      nome: dados.nome, 
+      perfil: dados.perfil 
+    })
+    
     const { data: authData, error: authError } = await serviceClient.auth.admin.createUser({
       email: dados.email,
       password: dados.password,
@@ -79,17 +86,25 @@ export async function criarUsuario(
     })
 
     if (authError) {
-      console.error('Erro ao criar usuário:', authError)
-      if (authError.message.includes('already registered')) {
+      console.error('Erro detalhado ao criar usuário:', JSON.stringify(authError, null, 2))
+      
+      // Erros específicos
+      if (authError.message?.includes('already registered') || authError.message?.includes('already exists')) {
         return { erro: 'Já existe um usuário com este e-mail.' }
       }
-      return { erro: authError.message }
+      if (authError.message?.includes('database error')) {
+        return { erro: 'Erro no banco de dados ao criar usuário. Verifique se o email já existe ou se há problema com o perfil selecionado.' }
+      }
+      
+      return { erro: authError.message || 'Erro ao criar usuário' }
     }
 
-    if (!authData.user) {
-      return { erro: 'Erro ao criar usuário.' }
+    if (!authData?.user) {
+      console.error('Nenhum usuário retornado após criação')
+      return { erro: 'Erro ao criar usuário - resposta vazia' }
     }
 
+    console.log('Usuário criado com sucesso:', authData.user.id)
     revalidatePath('/admin/usuarios')
     return { sucesso: true, id: authData.user.id }
   } catch (error) {
