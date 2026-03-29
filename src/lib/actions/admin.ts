@@ -75,21 +75,20 @@ export async function criarUsuario(
       url: supabaseUrl 
     })
     
+    // ETAPA 1: Criar usuário no auth.users SEM trigger
     const response = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': serviceRoleKey!,
         'Authorization': `Bearer ${serviceRoleKey}`,
+        'x-application-name': 'sige-iml',
       },
       body: JSON.stringify({
         email: dados.email,
         password: dados.password,
         email_confirm: true,
-        user_metadata: {
-          nome: dados.nome,
-          perfil: dados.perfil,
-        },
+        // Não enviar user_metadata ainda - pode estar causando o erro no trigger
       }),
     })
 
@@ -107,9 +106,45 @@ export async function criarUsuario(
       return { erro: errorMsg }
     }
 
-    console.log('Usuário criado:', responseData.id)
+    const userId = responseData.id
+    console.log('Usuário criado no auth:', userId)
+
+    // ETAPA 2: Inserir manualmente na tabela usuários
+    const serviceClient = createServiceClient()
+    const { error: insertError } = await serviceClient
+      .from('usuarios')
+      .insert({
+        id: userId,
+        email: dados.email,
+        nome: dados.nome,
+        perfil: dados.perfil,
+        ativo: true,
+      })
+
+    if (insertError) {
+      console.error('Erro ao inserir na tabela usuarios:', insertError)
+      // Não retorna erro - o usuário foi criado no auth, só falhou a sincronização
+    }
+
+    // ETAPA 3: Atualizar user_metadata
+    await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': serviceRoleKey!,
+        'Authorization': `Bearer ${serviceRoleKey}`,
+      },
+      body: JSON.stringify({
+        user_metadata: {
+          nome: dados.nome,
+          perfil: dados.perfil,
+        },
+      }),
+    })
+
+    console.log('Usuário criado com sucesso:', userId)
     revalidatePath('/admin/usuarios')
-    return { sucesso: true, id: responseData.id }
+    return { sucesso: true, id: userId }
   } catch (error) {
     console.error('Exceção ao criar usuário:', error)
     return { erro: error instanceof Error ? error.message : 'Erro desconhecido' }
