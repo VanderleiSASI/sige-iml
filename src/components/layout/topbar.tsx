@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { ChevronRight, Bell } from 'lucide-react'
+import { ChevronRight, Bell, User, KeyRound, LogOut } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
@@ -27,6 +27,9 @@ const rotaLabels: Record<string, string> = {
   usuarios: 'Usuários',
   instituicoes: 'Instituições',
   auditoria: 'Auditoria',
+  perfil: 'Meu Perfil',
+  'alterar-senha': 'Alterar Senha',
+  medicos: 'Médicos',
 }
 
 function getIniciais(nome: string): string {
@@ -100,7 +103,7 @@ export function Topbar() {
               <span className="text-sm hidden sm:block">{usuario.nome.split(' ')[0]}</span>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel className="font-normal">
               <div className="space-y-0.5">
                 <p className="text-sm font-medium">{usuario.nome}</p>
@@ -108,7 +111,17 @@ export function Topbar() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>
+            <DropdownMenuItem onClick={() => router.push('/perfil')} className="cursor-pointer">
+              <User className="w-4 h-4 mr-2" />
+              Meu perfil
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/perfil/alterar-senha')} className="cursor-pointer">
+              <KeyRound className="w-4 h-4 mr-2" />
+              Alterar senha
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">
+              <LogOut className="w-4 h-4 mr-2" />
               Sair do sistema
             </DropdownMenuItem>
           </DropdownMenuContent>
