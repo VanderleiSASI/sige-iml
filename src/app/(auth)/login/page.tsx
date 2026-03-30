@@ -86,7 +86,7 @@ export default function LoginPage() {
             />
           </div>
 
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 8 }}>
             <label style={{ display: 'block', marginBottom: 4, fontSize: 14, fontWeight: 500 }}>
               Senha
             </label>
@@ -105,6 +105,15 @@ export default function LoginPage() {
               }}
               placeholder="••••••••"
             />
+          </div>
+
+          <div style={{ textAlign: 'right', marginBottom: 20 }}>
+            <a
+              href="/recuperar-senha"
+              style={{ fontSize: 13, color: '#003366', textDecoration: 'none' }}
+            >
+              Esqueci minha senha
+            </a>
           </div>
 
           <button

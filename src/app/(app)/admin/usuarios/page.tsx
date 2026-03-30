@@ -10,8 +10,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { Users, Mail, Shield, UserX, Plus, Pencil, Key, Search } from 'lucide-react'
-import { criarUsuario, atualizarUsuario, redefinirSenhaUsuario, listarUsuarios } from '@/lib/actions/admin'
+import { Users, Mail, Shield, UserX, Plus, Pencil, Key, Search, Send } from 'lucide-react'
+import { criarUsuario, convidarUsuario, atualizarUsuario, redefinirSenhaUsuario, listarUsuarios } from '@/lib/actions/admin'
 import { toast } from 'sonner'
 import type { Database } from '@/lib/types/database.types'
 
@@ -53,6 +53,7 @@ export default function UsuariosPage() {
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null)
   
   // Form states
+  const [modoConvite, setModoConvite] = useState(false)
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
@@ -82,18 +83,21 @@ export default function UsuariosPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     setIsLoading(true)
-    
-    const result = await criarUsuario(formData)
-    
+
+    const result = modoConvite
+      ? await convidarUsuario({ nome: formData.nome, email: formData.email, perfil: formData.perfil })
+      : await criarUsuario(formData)
+
     if ('erro' in result) {
       toast.error(result.erro)
     } else {
-      toast.success('Usuário criado com sucesso.')
+      toast.success(modoConvite ? 'Convite enviado por e-mail.' : 'Usuário criado com sucesso.')
       setIsCreateOpen(false)
       setFormData({ nome: '', email: '', password: '', perfil: 'medico' })
+      setModoConvite(false)
       loadUsuarios()
     }
-    
+
     setIsLoading(false)
   }
 
@@ -206,9 +210,42 @@ export default function UsuariosPage() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Criar Novo Usuário</DialogTitle>
+                <DialogTitle>Novo Usuário</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleCreate} className="space-y-4">
+                {/* Seletor de modo */}
+                <div className="grid grid-cols-2 gap-1 rounded-md border p-1 bg-muted">
+                  <button
+                    type="button"
+                    onClick={() => setModoConvite(false)}
+                    className={`rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+                      !modoConvite
+                        ? 'bg-white shadow-sm text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Senha manual
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModoConvite(true)}
+                    className={`rounded px-3 py-1.5 text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                      modoConvite
+                        ? 'bg-white shadow-sm text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    Convidar por e-mail
+                  </button>
+                </div>
+
+                {modoConvite && (
+                  <p className="text-xs text-muted-foreground">
+                    O usuário receberá um e-mail com link para definir sua própria senha.
+                  </p>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="nome">Nome completo *</Label>
                   <Input
@@ -230,18 +267,20 @@ export default function UsuariosPage() {
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Senha inicial *</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Mínimo 6 caracteres"
-                    minLength={6}
-                    required
-                  />
-                </div>
+                {!modoConvite && (
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Senha inicial *</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="Mínimo 6 caracteres"
+                      minLength={6}
+                      required
+                    />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="perfil">Perfil *</Label>
                   <Select
@@ -260,11 +299,13 @@ export default function UsuariosPage() {
                   </Select>
                 </div>
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => { setIsCreateOpen(false); setModoConvite(false) }}>
                     Cancelar
                   </Button>
                   <Button type="submit" disabled={isLoading}>
-                    {isLoading ? 'Criando...' : 'Criar Usuário'}
+                    {isLoading
+                      ? (modoConvite ? 'Enviando...' : 'Criando...')
+                      : (modoConvite ? 'Enviar Convite' : 'Criar Usuário')}
                   </Button>
                 </DialogFooter>
               </form>
