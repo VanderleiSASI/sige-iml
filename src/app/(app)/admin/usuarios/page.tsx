@@ -91,7 +91,11 @@ export default function UsuariosPage() {
     if ('erro' in result) {
       toast.error(result.erro)
     } else {
-      toast.success(modoConvite ? 'Convite enviado por e-mail.' : 'Usuário criado com sucesso.')
+      if (modoConvite && 'avisoEmail' in result && result.avisoEmail) {
+        toast.warning(`Usuário criado, mas o email não foi enviado: ${result.avisoEmail}`)
+      } else {
+        toast.success(modoConvite ? 'Convite enviado por e-mail.' : 'Usuário criado com sucesso.')
+      }
       setIsCreateOpen(false)
       setFormData({ nome: '', email: '', password: '', perfil: 'medico' })
       setModoConvite(false)

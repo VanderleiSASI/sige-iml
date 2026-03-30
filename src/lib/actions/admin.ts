@@ -106,7 +106,7 @@ export async function convidarUsuario(
     nome: string
     perfil: Database['public']['Enums']['perfil_usuario']
   }
-): Promise<{ sucesso: true; id: string } | { erro: string }> {
+): Promise<{ sucesso: true; id: string; avisoEmail?: string } | { erro: string }> {
   const authClient = await createClient()
   const { data: { user } } = await authClient.auth.getUser()
   if (!user) return { erro: 'Não autenticado.' }
@@ -146,10 +146,15 @@ export async function convidarUsuario(
     }
 
     // 2. Gerar link para o usuário definir sua própria senha
-    const { data: linkData } = await serviceClient.auth.admin.generateLink({
+    const { data: linkData, error: linkError } = await serviceClient.auth.admin.generateLink({
       type: 'recovery',
       email: dados.email,
     })
+
+    if (linkError || !linkData?.properties?.hashed_token) {
+      console.error('generateLink falhou:', linkError?.message)
+      // Usuário foi criado mas não conseguimos gerar o link — continuar com aviso
+    }
 
     const token = linkData?.properties?.hashed_token
     const setupUrl = token
@@ -158,21 +163,32 @@ export async function convidarUsuario(
 
     // 3. Enviar email de convite via Edge Function (usa SMTP configurado no projeto)
     const perfilNome = perfilLabel[dados.perfil] ?? dados.perfil
-    await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-email`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-      },
-      body: JSON.stringify({
-        to: dados.email,
-        subject: 'SIGE-IML — Convite de Acesso',
-        body: `Olá ${dados.nome},\n\nVocê foi convidado(a) para acessar o SIGE-IML.\nPerfil: ${perfilNome}\n\nPara acessar e definir sua senha:\n${setupUrl}\n\nEste link expira em 1 hora.\n\n---\nSIGE-IML\nInstituto Médico Legal "Dr. Antônio Hosannah da Silva Filho"`,
-        html: buildConviteHtml(dados.nome, perfilNome, setupUrl),
-      }),
-    }).catch((err) => {
-      console.error('Aviso: falha ao enviar email de convite:', err)
-    })
+    let avisoEmail: string | undefined
+
+    try {
+      const emailRes = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+        body: JSON.stringify({
+          to: dados.email,
+          subject: 'SIGE-IML — Convite de Acesso',
+          body: `Olá ${dados.nome},\n\nVocê foi convidado(a) para acessar o SIGE-IML.\nPerfil: ${perfilNome}\n\nPara acessar e definir sua senha:\n${setupUrl}\n\nEste link expira em 1 hora.\n\n---\nSIGE-IML\nInstituto Médico Legal "Dr. Antônio Hosannah da Silva Filho"`,
+          html: buildConviteHtml(dados.nome, perfilNome, setupUrl),
+        }),
+      })
+
+      if (!emailRes.ok) {
+        const errBody = await emailRes.text().catch(() => `status ${emailRes.status}`)
+        avisoEmail = `Falha ao enviar email (${emailRes.status}): ${errBody}`
+        console.error('send-email falhou:', avisoEmail)
+      }
+    } catch (fetchErr) {
+      avisoEmail = fetchErr instanceof Error ? fetchErr.message : 'Edge Function inacessível'
+      console.error('Erro ao chamar send-email:', fetchErr)
+    }
 
     // 4. Garantir sincronização (trigger pode já ter inserido)
     await serviceClient
@@ -186,7 +202,7 @@ export async function convidarUsuario(
       }, { onConflict: 'id' })
 
     revalidatePath('/admin/usuarios')
-    return { sucesso: true, id: newUser.user.id }
+    return { sucesso: true, id: newUser.user.id, ...(avisoEmail ? { avisoEmail } : {}) }
   } catch (error) {
     return { erro: error instanceof Error ? error.message : 'Erro desconhecido' }
   }
